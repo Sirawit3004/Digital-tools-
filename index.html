@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Digital Tools Challenge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Sarabun:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<!-- Firebase (for shared leaderboard) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --bg:#F2F1FA;
+    --card:#FFFFFF;
+    --line:#E9E6F7;
+    --text:#232336;
+    --muted:#7A7C90;
+    --purple:#5B3DF5;
+    --purple-dark:#3F2AC7;
+    --purple-bg:#EEEBFF;
+    --yellow-bg:#FDF6E1; --yellow:#EBA916;
+    --blue-bg:#E9F1FF;   --blue:#3B7CF6;
+    --green-bg:#E8FBF1;  --green:#1FAE5C;
+    --orange-bg:#FFF0E6; --orange:#F2790F;
+    --red:#E24C63; --red-bg:#FDECEF;
+    --success:#1FAE5C;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Sarabun',sans-serif;-webkit-tap-highlight-color:transparent;}
+  body{min-height:100vh;}
+  h1,h2,h3,.display{font-family:'Kanit',sans-serif;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  #shell{max-width:600px;margin:0 auto;padding:20px 14px 44px;}
+  #panel{background:var(--card);border-radius:24px;padding:22px 18px;box-shadow:0 12px 32px rgba(70,60,150,0.08);position:relative;}
+
+  .center{text-align:center;}
+  .icon-badge{font-size:44px;line-height:1;margin-bottom:6px;}
+  .title{font-size:26px;font-weight:700;color:var(--purple-dark);margin:2px 0 0;}
+  .title small{display:block;font-size:16px;color:var(--purple);font-weight:600;margin-top:2px;}
+  .subtitle{color:var(--muted);font-size:15px;margin:10px 0 20px;}
+
+  .toolgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;}
+  .toolcard{border-radius:14px;padding:14px 6px;text-align:center;border:1.5px solid transparent;}
+  .toolcard .ticon{font-size:24px;}
+  .toolcard .tname{font-weight:700;font-size:13px;margin-top:4px;}
+  .toolcard .ttag{font-size:11px;color:var(--muted);margin-top:1px;}
+  .tc-yellow{background:var(--yellow-bg);border-color:#F5E3B0;}
+  .tc-yellow .tname{color:#8A6408;}
+  .tc-blue{background:var(--blue-bg);border-color:#CBDDFB;}
+  .tc-blue .tname{color:#1E4FA8;}
+  .tc-green{background:var(--green-bg);border-color:#C4EED9;}
+  .tc-green .tname{color:#15743B;}
+  .tc-orange{background:var(--orange-bg);border-color:#F7D3B3;}
+  .tc-orange .tname{color:#A6520A;}
+
+  .statsrow{display:flex;justify-content:space-between;background:#F8F7FD;border-radius:14px;padding:16px 8px;margin-bottom:20px;}
+  .stat{text-align:center;flex:1;}
+  .stat .semoji{font-size:20px;}
+  .stat .slabel{font-size:12.5px;color:var(--muted);margin-top:2px;font-weight:500;}
+
+  label{font-size:14px;font-weight:600;color:var(--purple-dark);display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  input[type=text]{
+    width:100%;padding:14px 16px;border-radius:12px;
+    background:#FAFAFD;border:1.5px solid var(--line);color:var(--text);
+    font-size:16px;font-family:'Sarabun',sans-serif;margin-bottom:18px;
+  }
+  input[type=text]:focus{outline:none;border-color:var(--purple);}
+
+  .howto{background:var(--yellow-bg);border-left:4px solid var(--yellow);border-radius:12px;padding:16px 16px;margin-bottom:22px;}
+  .howto .htitle{font-weight:700;color:#8A6408;font-size:14.5px;margin-bottom:8px;display:flex;gap:6px;align-items:center;}
+  .howto ul{margin:0;padding-left:18px;color:#7A5F12;font-size:14px;line-height:1.7;}
+
+  button{font-family:'Sarabun',sans-serif;cursor:pointer;border:none;}
+  .btn-primary{
+    width:100%;padding:16px;border-radius:14px;
+    background:linear-gradient(135deg,var(--purple),var(--purple-dark));
+    color:#fff;font-weight:700;font-size:16px;
+    box-shadow:0 8px 20px rgba(91,61,245,0.28);
+  }
+  .btn-primary:active{transform:scale(0.98);}
+  .btn-ghost{
+    width:100%;padding:14px;border-radius:14px;margin-top:10px;
+    background:#F5F4FB;color:var(--purple-dark);font-weight:600;font-size:15px;
+  }
+  .btn-back{background:transparent;color:var(--muted);font-weight:600;font-size:14px;padding:8px 0;}
+
+  /* ---- gameplay header ---- */
+  .quitpill{
+    display:inline-flex;align-items:center;gap:6px;background:var(--red-bg);color:var(--red);
+    font-weight:700;font-size:13px;padding:9px 14px;border-radius:999px;float:right;margin-bottom:10px;
+  }
+  .infobar{
+    clear:both;background:#F8F7FD;border-radius:14px;padding:12px 14px;margin-bottom:16px;
+    display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;font-size:13.5px;font-weight:600;
+  }
+  .infobar .item{display:flex;align-items:center;gap:5px;white-space:nowrap;}
+  .infobar .item .emo{font-size:15px;}
+
+  .goal-card{background:var(--purple-bg);border-left:4px solid var(--purple);border-radius:12px;padding:14px 16px;margin-bottom:16px;}
+  .goal-eyebrow{font-size:12px;font-weight:700;color:var(--purple);letter-spacing:0.02em;margin-bottom:6px;}
+  .goal-text{font-size:16px;font-weight:600;line-height:1.45;margin:0;}
+
+  .placeholders{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+  .ph-col .ph-label{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+  .ph-box{
+    border:1.5px dashed #C9C6E5;border-radius:12px;padding:12px 10px;min-height:64px;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    font-size:12.5px;color:#B4B1CC;font-weight:500;background:#FBFAFF;
+  }
+  .ph-box.filled-before{border-style:solid;font-size:12.5px;font-weight:600;border-color:#F5E3B0;background:var(--yellow-bg);color:#8A6408;}
+  .ph-box.filled-after{border-style:solid;font-size:12.5px;font-weight:600;border-color:#C4EED9;background:var(--green-bg);color:#15743B;}
+  .ph-box.correct{border-color:var(--success);background:#EAFBF2;color:#0F6B34;}
+  .ph-box.wrong{border-color:var(--red);background:var(--red-bg);color:#A82740;}
+
+  .col-header{display:flex;align-items:center;gap:6px;font-weight:700;font-size:14px;margin-bottom:6px;}
+  .col-header.before{color:var(--yellow);}
+  .col-header.after{color:var(--green);}
+  .col-underline{height:2px;border-radius:2px;margin-bottom:12px;}
+  .col-underline.before{background:var(--yellow);}
+  .col-underline.after{background:var(--green);}
+
+  .choicegrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+  .choicecol{display:flex;flex-direction:column;gap:10px;}
+  .opt{
+    display:flex;align-items:center;justify-content:center;text-align:center;width:100%;
+    padding:12px 8px;border-radius:12px;border:1.5px solid var(--line);
+    background:#FAFAFD;color:var(--text);font-size:13px;font-weight:500;line-height:1.35;min-height:52px;
+  }
+  .opt.picked-before{border-color:var(--yellow);background:var(--yellow-bg);color:#8A6408;}
+  .opt.picked-after{border-color:var(--green);background:var(--green-bg);color:#15743B;}
+  .opt.correct{border-color:var(--success);background:#EAFBF2;color:#0F6B34;}
+  .opt.wrong{border-color:var(--red);background:var(--red-bg);color:#A82740;}
+  .opt.dim{opacity:0.4;}
+  .opt:disabled{cursor:default;}
+
+  .tool-section .col-header{color:var(--purple);}
+  .tool-section .col-underline{background:var(--purple);}
+  .tool-hint{font-size:12.5px;color:var(--muted);margin:-4px 0 10px;}
+  .toolchoices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;}
+  .toolopt{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:12px 4px;border-radius:12px;border:1.5px solid var(--line);
+    background:#FAFAFD;font-size:12px;font-weight:700;color:var(--text);
+  }
+  .toolopt .ticon{font-size:20px;}
+  .toolopt.correct{border-color:var(--success);background:#EAFBF2;color:#0F6B34;}
+  .toolopt.wrong{border-color:var(--red);background:var(--red-bg);color:#A82740;}
+  .toolopt.dim{opacity:0.4;}
+  .toolopt.locked-disabled{opacity:0.35;background:#F3F2F8;}
+
+  .result-strip{
+    display:flex;justify-content:space-around;align-items:center;background:#F8F7FD;border-radius:14px;
+    padding:14px 6px;margin:16px 0;font-size:12px;font-weight:600;color:var(--muted);flex-wrap:wrap;gap:6px;
+  }
+  .result-strip b{color:var(--purple-dark);font-family:'Kanit',sans-serif;font-size:16px;}
+
+  .bignum{font-size:48px;font-weight:700;font-family:'Kanit',sans-serif;color:var(--purple-dark);margin:6px 0 2px;}
+
+  table{width:100%;border-collapse:collapse;margin-top:8px;}
+  th,td{padding:10px 6px;text-align:left;font-size:14px;border-bottom:1px solid var(--line);}
+  th{color:var(--muted);font-size:12px;font-weight:700;}
+  tr.me td{color:var(--purple-dark);font-weight:700;}
+  td.rank{color:var(--muted);font-family:'JetBrains Mono',monospace;}
+
+  .overlay{
+    position:fixed;inset:0;background:rgba(30,25,60,0.45);display:flex;align-items:center;justify-content:center;
+    padding:20px;z-index:50;
+  }
+  .modal{background:#fff;border-radius:18px;padding:22px;max-width:340px;width:100%;text-align:center;}
+  .modal p{font-size:15px;color:var(--text);margin:6px 0 18px;line-height:1.5;}
+  .modal-row{display:flex;gap:10px;}
+  .modal-row button{flex:1;padding:12px;border-radius:12px;font-weight:700;font-size:14.5px;}
+  .modal-cancel{background:#F5F4FB;color:var(--purple-dark);}
+  .modal-confirm{background:var(--red);color:#fff;}
+
+  @media (max-width:380px){
+    .goal-text{font-size:14.5px;}
+    .opt{font-size:12px;}
+  }
+  @media (prefers-reduced-motion: reduce){ * { transition:none !important; } }
+</style>
+</head>
+<body>
+<div id="shell"><div id="panel"></div></div>
+
+<script>
+(function(){
+
+  // ---------- Content ----------
+  const TOOLS = [
+    {name:"Power BI", icon:"📊", cls:"tc-yellow", desc:"Dashboard"},
+    {name:"PI Vision", icon:"🏭", cls:"tc-blue", desc:"Real-time"},
+    {name:"Dataiku", icon:"🤖", cls:"tc-green", desc:"AI / ML"}
+  ];
+  const TOOL_NAMES = TOOLS.map(t=>t.name);
+
+  // ==== Firebase (shared leaderboard) ====
+  // 1) Create a free project at https://console.firebase.google.com
+  // 2) Enable "Realtime Database" (test mode) — see chat instructions for full steps
+  // 3) Paste YOUR config below, replacing every "YOUR_..." value
+  const firebaseConfig = {
+    apiKey: "AIzaSyArNohkKsrO-WciM2gjSJp0I5nhvJKuAEk",
+    authDomain: "digitalinnovation-26c7d.firebaseapp.com",
+    databaseURL: "https://digitalinnovation-26c7d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "digitalinnovation-26c7d"
+  };
+  let db = null;
+  try{
+    if(firebaseConfig.apiKey !== "YOUR_API_KEY"){
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+    }
+  }catch(e){ console.warn("Firebase not configured:", e); }
+
+  function saveScoreToLeaderboard(name, score, timeSec){
+    if(!db) return;
+    try{
+      db.ref('leaderboard').push({ name, score, time: timeSec, ts: Date.now() });
+    }catch(e){ console.warn("Could not save score:", e); }
+  }
+  function loadLeaderboard(callback){
+    if(!db){ callback([]); return; }
+    db.ref('leaderboard').orderByChild('score').limitToLast(10).once('value', snap=>{
+      const arr = [];
+      snap.forEach(child=>{ arr.push(child.val()); });
+      arr.reverse(); // highest score first
+      callback(arr);
+    }, err=>{ console.warn("Could not load leaderboard:", err); callback([]); });
+  }
+
+  // 22-question pool: Power BI x6, PI Vision x6, Dataiku x10
+  const ROUNDS_POOL = [
+    // ---------------- Power BI ----------------
+    {goal:"อยากได้รายงานประจำเดือนที่อัปเดตเอง",
+     before:"คัดลอกตัวเลขลง Excel เองทุกเดือน",
+     after:"แดชบอร์ดอัปเดตอัตโนมัติ",
+     tool:"Power BI"},
+    {goal:"อยากให้ทุกฝ่ายเห็นข้อมูลชุดเดียวกัน",
+     before:"แต่ละฝ่ายเก็บข้อมูลคนละไฟล์ Excel",
+     after:"แดชบอร์ดเดียวรวมทุกฝ่าย เห็นตัวเลขตรงกัน",
+     tool:"Power BI"},
+    {goal:"อยากดูผลงานได้ทุกที่ ไม่ใช่แค่ที่โต๊ะ",
+     before:"ดูได้แค่จากเอกสารที่โต๊ะทำงาน",
+     after:"เปิดแดชบอร์ดผ่านมือถือได้แบบเรียลไทม์",
+     tool:"Power BI"},
+    {goal:"อยากเทียบยอดขายแต่ละสาขาในหน้าจอเดียว",
+     before:"รวมยอดขายจากอีเมลแต่ละสาขาเอง",
+     after:"แดชบอร์ดเทียบยอดขายทุกสาขา กรองตามช่วงเวลาได้",
+     tool:"Power BI"},
+    {goal:"อยากเห็นแนวโน้มค่าใช้จ่ายย้อนหลังไว",
+     before:"เปิดหลายไฟล์ Excel มาคำนวณเอง",
+     after:"กราฟแนวโน้มขึ้นอัตโนมัติ เทียบงบได้ทันที",
+     tool:"Power BI"},
+    {goal:"อยากคลิกจากภาพรวมโรงงานลงไปดูแต่ละไลน์",
+     before:"เห็นแค่ยอดรวม ต้องขอข้อมูลแยกไลน์เอง",
+     after:"คลิกจากภาพรวมลงไปดูแต่ละไลน์ได้ทันที",
+     tool:"Power BI"},
+
+    // ---------------- PI Vision ----------------
+    {goal:"อยากเห็นอุณหภูมิ-ความดันแบบเรียลไทม์",
+     before:"เดินจดค่าด้วยสมุดโน้ตทุกชั่วโมง",
+     after:"เห็นค่าจากเซ็นเซอร์เรียลไทม์ พร้อมแจ้งเตือนทันที",
+     tool:"PI Vision"},
+    {goal:"อยากรู้ทันทีเมื่อค่ากระบวนการเริ่มเบี่ยงเบน",
+     before:"รู้ว่าผิดปกติก็ต่อเมื่อจบกระบวนการแล้ว",
+     after:"ระบบแจ้งเตือนทันทีที่ค่าเริ่มเบี่ยงเบน",
+     tool:"PI Vision"},
+    {goal:"อยากเห็นการใช้พลังงานเครื่องจักรระหว่างเดินเครื่อง",
+     before:"จดมิเตอร์ด้วยมือทุกวัน",
+     after:"เห็นการใช้พลังงานเรียลไทม์ พร้อมแจ้งเตือนผิดปกติ",
+     tool:"PI Vision"},
+    {goal:"อยากเห็นสถานะทุกไลน์การผลิตในจอเดียว",
+     before:"เดินไปดูแต่ละไลน์ทีละจุดเอง",
+     after:"จอเดียวแสดงสถานะทุกไลน์แบบเรียลไทม์",
+     tool:"PI Vision"},
+    {goal:"อยากรู้แนวโน้มการสั่นสะเทือนก่อนเครื่องเสีย",
+     before:"วัดค่าสั่นสะเทือนด้วยเครื่องมือมือถือเป็นรอบ",
+     after:"ติดตามค่าสั่นสะเทือนตลอดเวลา แจ้งเตือนเมื่อผิดปกติ",
+     tool:"PI Vision"},
+    {goal:"อยากเห็นความสัมพันธ์ของหลายตัวแปรพร้อมกัน",
+     before:"เปิดกราฟแยกทีละตัวแปรทีละจอ",
+     after:"ซ้อนกราฟหลายตัวแปรในจอเดียว เห็นผิดปกติทันที",
+     tool:"PI Vision"},
+
+    // ---------------- Dataiku ----------------
+    {goal:"อยากรู้ล่วงหน้าว่าเครื่องจักรจะเสีย",
+     before:"เครื่องเสียกะทันหัน ไม่มีสัญญาณเตือนล่วงหน้า",
+     after:"โมเดลทำนายความเสี่ยงจากข้อมูลย้อนหลัง ซ่อมก่อนเสีย",
+     tool:"Dataiku"},
+    {goal:"อยากเริ่มวิเคราะห์ได้เลย ไม่ต้องรวมข้อมูลเอง",
+     before:"ใช้เวลา 2 วันรวมข้อมูลจาก 5 ระบบด้วยมือ",
+     after:"ระบบดึงและเตรียมข้อมูลอัตโนมัติ เริ่มวิเคราะห์ได้วันแรก",
+     tool:"Dataiku"},
+    {goal:"อยากรู้ล่วงหน้าว่าลูกค้าคนไหนจะเลิกใช้บริการ",
+     before:"รู้ว่าลูกค้าเลิกใช้ก็ต่อเมื่อยกเลิกไปแล้ว",
+     after:"โมเดลทำนายความเสี่ยงลูกค้าเลิกใช้ล่วงหน้า",
+     tool:"Dataiku"},
+    {goal:"อยากพยากรณ์ความต้องการสินค้าให้แม่นยำขึ้น",
+     before:"คาดการณ์ความต้องการจากประสบการณ์และความรู้สึก",
+     after:"โมเดลพยากรณ์จากข้อมูลย้อนหลัง วางแผนผลิตแม่นยำขึ้น",
+     tool:"Dataiku"},
+    {goal:"อยากรู้ทันทีว่าค่าพารามิเตอร์อยู่ในเกณฑ์ไหม",
+     before:"ไม่แน่ใจว่าค่าความดันวันนี้อยู่ในขีดจำกัดไหม",
+     after:"ระบบเทียบค่ากับเกณฑ์ทันที บอกผ่าน/ไม่ผ่านชัดเจน",
+     tool:"Dataiku"},
+    {goal:"ผลิตภัณฑ์หลุดสเปก อยากหาสาเหตุให้เร็วที่สุด",
+     before:"ค้นล็อกหลายชั่วโมงเพื่อหาพารามิเตอร์ที่ผิด",
+     after:"ระบุพารามิเตอร์ผิดปกติได้ในไม่กี่นาที",
+     tool:"Dataiku"},
+    {goal:"อยากเทียบค่าพารามิเตอร์รอบนี้กับมาตรฐานย้อนหลัง",
+     before:"เปิดไฟล์แต่ละรอบทีละไฟล์มาเทียบเอง",
+     after:"ระบบเทียบค่ากับมาตรฐานย้อนหลังอัตโนมัติในจอเดียว",
+     tool:"Dataiku"},
+    {goal:"อยากรู้ว่าค่าที่เปลี่ยนกะทันหันเกิดจากตัวแปรไหน",
+     before:"เดาสาเหตุจากประสบการณ์เอาเอง",
+     after:"ระบบแสดงความสัมพันธ์ของพารามิเตอร์ ชี้สาเหตุตรงจุด",
+     tool:"Dataiku"},
+    {goal:"อยากตั้งขีดจำกัดพารามิเตอร์ให้เหมาะแต่ละผลิตภัณฑ์",
+     before:"ใช้ขีดจำกัดชุดเดียวกันทุกผลิตภัณฑ์ ตรวจจับผิดพลาด",
+     after:"ตั้งขีดจำกัดแยกตามแต่ละผลิตภัณฑ์ได้ละเอียด",
+     tool:"Dataiku"},
+    {goal:"อยากเทียบค่าพารามิเตอร์ของเครื่องจักรหลายเครื่อง",
+     before:"เทียบค่าทีละเครื่องด้วยมือเอง",
+     after:"ระบบแสดงค่าทุกเครื่องเทียบกันในจอเดียว เห็นต่างทันที",
+     tool:"Dataiku"},
+  ];
+
+  const ROUNDS_PER_GAME = 5; // fixed mix: 1 Power BI + 1 PI Vision + 3 Dataiku (see pickWeightedRounds)
+  const POINTS = {before:6, after:6, tool:8}; // 20 pts per card x 5 cards = 100 max
+
+  // ---------- State ----------
+  let state = {
+    screen: "start", // start | round | end
+    name: "",
+    round: 0,
+    rounds: [],
+    score: 0,
+    perRound: [],
+    beforeOpts: [], afterOpts: [], toolOpts: [],
+    selected: {before:null, after:null, tool:null},
+    correctness: {before:null, after:null, tool:null},
+    locked: false,
+    startedAt: null,
+    finishedAt: null,
+    elapsedSec: 0,
+    tickId: null,
+    showQuitModal: false,
+  };
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+  // Picks a fixed mix per game: 1 Power BI, 1 PI Vision, 3 Dataiku (order shuffled)
+  function pickWeightedRounds(){
+    const byTool = {};
+    ROUNDS_POOL.forEach(r=>{ (byTool[r.tool] = byTool[r.tool] || []).push(r); });
+    const mix = {"Power BI":1, "PI Vision":1, "Dataiku":3};
+    let picks = [];
+    Object.keys(mix).forEach(tool=>{
+      const pool = byTool[tool] || [];
+      picks = picks.concat(shuffle(pool).slice(0, mix[tool]));
+    });
+    return shuffle(picks);
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function pickDistractors(field, excludeIndex, count){
+    const idxs = state.rounds.map((_,i)=>i).filter(i=>i!==excludeIndex);
+    const chosen = shuffle(idxs).slice(0,count);
+    return chosen.map(i=>state.rounds[i][field]);
+  }
+  function fmtTime(sec){
+    const m = Math.floor(sec/60).toString().padStart(2,'0');
+    const s = Math.floor(sec%60).toString().padStart(2,'0');
+    return m+":"+s;
+  }
+
+  // ---------- Timer ----------
+  function startTicker(){
+    clearInterval(state.tickId);
+    state.tickId = setInterval(()=>{
+      state.elapsedSec = (Date.now()-state.startedAt)/1000;
+      const el = document.getElementById('timerDisplay');
+      if(el) el.textContent = fmtTime(state.elapsedSec);
+      else clearInterval(state.tickId);
+    },250);
+  }
+  function stopTicker(){ clearInterval(state.tickId); }
+
+  // ---------- Render ----------
+  function render(){
+    const panel = document.getElementById('panel');
+    let html = "";
+    if(state.screen==="start") html = renderStart();
+    else if(state.screen==="round") html = renderRound();
+    else if(state.screen==="end") html = renderEnd();
+
+    if(state.showQuitModal) html += renderQuitModal();
+    panel.innerHTML = html;
+    attachHandlers();
+    if(state.screen==="end") renderLeaderboardTable();
+  }
+
+  function renderStart(){
+    return `
+      <div class="center">
+        <div class="icon-badge">🎮</div>
+        <div class="title">Digital Tools Challenge<small>2026</small></div>
+        <p class="subtitle">จับคู่เครื่องมือดิจิทัลกับปัญหาที่แก้ไข</p>
+      </div>
+      <div class="toolgrid">
+        ${TOOLS.map(t=>`
+          <div class="toolcard ${t.cls}">
+            <div class="ticon">${t.icon}</div>
+            <div class="tname">${t.name}</div>
+            <div class="ttag">${t.desc}</div>
+          </div>`).join('')}
+      </div>
+      <div class="statsrow">
+        <div class="stat"><div class="semoji">🎯</div><div class="slabel">5 การ์ด</div></div>
+        <div class="stat"><div class="semoji">⚡</div><div class="slabel">3 เครื่องมือ</div></div>
+        <div class="stat"><div class="semoji">🏆</div><div class="slabel">คะแนนเต็ม 100</div></div>
+      </div>
+      <label>👤 ชื่อของคุณ</label>
+      <input type="text" id="nameInput" maxlength="20" placeholder="กรอกชื่อของคุณ" value="${escapeHtml(state.name)}">
+      <div class="howto">
+        <div class="htitle">💡 วิธีเล่น</div>
+        <ul>
+          <li>อ่านเป้าหมายที่โจทย์กำหนด</li>
+          <li>เลือกอดีต (สถานการณ์เดิม) และอนาคต (สถานการณ์ใหม่) — เปลี่ยนใจใหม่ได้ก่อนตอบ</li>
+          <li>เมื่อพร้อมแล้ว เลือก Digital Tool เพื่อยืนยันคำตอบ</li>
+          <li>เล่นครบ 5 การ์ด (สุ่มจากคลังคำถามทั้งหมด) รับคะแนนสูงสุด 100</li>
+          <li>ออกจากเกมได้ทุกเมื่อที่ต้องการ</li>
+        </ul>
+      </div>
+      <button class="btn-primary" id="startBtn">🚀 เริ่มเล่นเลย!</button>
+    `;
+  }
+
+  function phBoxClass(field){
+    if(state.locked){
+      return 'ph-box filled ' + (state.correctness[field] ? 'correct' : 'wrong');
+    }
+    return state.selected[field]!==null ? ('ph-box filled-'+field) : 'ph-box';
+  }
+  function phBoxText(field){
+    if(state.selected[field]!==null) return escapeHtml(state.selected[field]);
+    return field==='before' ? 'เลือกจากด้านล่าง →' : '← เลือกจากด้านล่าง';
+  }
+
+  function renderRound(){
+    const r = state.rounds[state.round];
+    const toolsUnlocked = state.selected.before!==null && state.selected.after!==null;
+    const pts = state.locked ? (state.correctness.before?POINTS.before:0)+(state.correctness.after?POINTS.after:0)+(state.correctness.tool?POINTS.tool:0) : null;
+
+    return `
+      <div class="quitpill" id="quitBtn">✕ ออกจากเกม</div>
+      <div class="infobar">
+        <div class="item"><span class="emo">👤</span>${escapeHtml(state.name)}</div>
+        <div class="item"><span class="emo">⭐</span>${state.score} คะแนน</div>
+        <div class="item"><span class="emo">⏱️</span><span id="timerDisplay" class="mono">${fmtTime(state.elapsedSec)}</span></div>
+        <div class="item"><span class="emo">📍</span>${state.round+1}/${state.rounds.length}</div>
+      </div>
+
+      <div class="goal-card">
+        <div class="goal-eyebrow">🎯 เป้าหมาย:</div>
+        <p class="goal-text">${r.goal}</p>
+      </div>
+
+      <div class="placeholders">
+        <div class="ph-col">
+          <div class="ph-label">🕰️ อดีต:</div>
+          <div class="${phBoxClass('before')}">${phBoxText('before')}</div>
+        </div>
+        <div class="ph-col">
+          <div class="ph-label">🚀 อนาคต:</div>
+          <div class="${phBoxClass('after')}">${phBoxText('after')}</div>
+        </div>
+      </div>
+
+      <div class="choicegrid">
+        <div class="choicecol">
+          <div class="col-header before">🕰️ เลือก อดีต</div>
+          <div class="col-underline before"></div>
+          ${state.beforeOpts.map(o=>optBtn('before', o, r.before)).join('')}
+        </div>
+        <div class="choicecol">
+          <div class="col-header after">🚀 เลือก อนาคต</div>
+          <div class="col-underline after"></div>
+          ${state.afterOpts.map(o=>optBtn('after', o, r.after)).join('')}
+        </div>
+      </div>
+
+      <div class="tool-section">
+        <div class="col-header">🛠️ เลือก เครื่องมือ (เพื่อยืนยันคำตอบ)</div>
+        <div class="col-underline"></div>
+        ${!toolsUnlocked && !state.locked ? '<div class="tool-hint">⚠️ เลือกอดีตและอนาคตให้ครบก่อน จึงจะเลือกเครื่องมือได้</div>' : ''}
+        <div class="toolchoices">
+          ${state.toolOpts.map(name=>toolBtn(name, r.tool, toolsUnlocked)).join('')}
+        </div>
+      </div>
+
+      ${state.locked ? `
+        <div class="result-strip">
+          <div>ก่อน <b>${state.correctness.before? '+'+POINTS.before:'0'}</b></div>
+          <div>หลัง <b>${state.correctness.after? '+'+POINTS.after:'0'}</b></div>
+          <div>เครื่องมือ <b>${state.correctness.tool? '+'+POINTS.tool:'0'}</b></div>
+          <div>รวม <b>${pts}/20</b></div>
+        </div>
+        <button class="btn-primary" id="nextBtn">${state.round < state.rounds.length-1 ? 'การ์ดถัดไป →' : 'ดูคะแนนสรุป 🏁'}</button>
+      ` : ''}
+    `;
+  }
+
+  function optBtn(field, text, correctVal){
+    let cls = 'opt';
+    if(state.locked){
+      if(text===correctVal) cls += ' correct';
+      else if(text===state.selected[field]) cls += ' wrong';
+      else cls += ' dim';
+    } else if(state.selected[field]===text){
+      cls += ' picked-'+field;
+    }
+    const disabled = state.locked ? 'disabled' : '';
+    return `<button class="${cls}" data-kind="ba" data-field="${field}" data-val="${escapeHtml(text)}" ${disabled}>${escapeHtml(text)}</button>`;
+  }
+  function toolBtn(name, correctVal, toolsUnlocked){
+    const t = TOOLS.find(t=>t.name===name);
+    let cls = 'toolopt';
+    if(state.locked){
+      if(name===correctVal) cls += ' correct';
+      else if(name===state.selected.tool) cls += ' wrong';
+      else cls += ' dim';
+    } else if(!toolsUnlocked){
+      cls += ' locked-disabled';
+    }
+    const disabled = (state.locked || !toolsUnlocked) ? 'disabled' : '';
+    return `<button class="${cls}" data-kind="tool" data-val="${escapeHtml(name)}" ${disabled}><span class="ticon">${t.icon}</span>${name}</button>`;
+  }
+
+  function renderEnd(){
+    const correctCount = state.perRound.reduce((sum,p)=> sum + (p.before?1:0)+(p.after?1:0)+(p.tool?1:0), 0);
+    let msg = "ลองใหม่อีกครั้งได้นะ!";
+    if(state.score>=90) msg = "สุดยอดมาก! เชี่ยวชาญ Digital Tools จริง ๆ 🎉";
+    else if(state.score>=70) msg = "เก่งมาก! เข้าใจการจับคู่เครื่องมือได้ดี 👏";
+    else if(state.score>=40) msg = "ทำได้ดี ลองเล่นอีกครั้งเพื่อคะแนนที่สูงขึ้น 💪";
+    return `
+      <div class="center">
+        <div class="icon-badge">🏁</div>
+        <div class="title" style="font-size:20px;">เล่นครบแล้ว, ${escapeHtml(state.name)}!</div>
+        <div class="bignum">${state.score}<span class="mono" style="font-size:22px;color:var(--muted);"> / 100</span></div>
+        <p class="subtitle">ตอบถูก ${correctCount}/15 ช่อง · ใช้เวลา ${fmtTime(state.elapsedSec)}</p>
+        <p class="subtitle" style="margin-top:-8px;">${msg}</p>
+      </div>
+      <h3 style="margin:6px 0 10px;font-size:15px;color:var(--purple-dark);">🏆 อันดับคะแนน</h3>
+      <table id="lbTable"><thead><tr><th>#</th><th>ชื่อ</th><th>คะแนน</th><th>เวลา</th></tr></thead>
+      <tbody><tr><td colspan="4" style="color:var(--muted);">กำลังโหลด…</td></tr></tbody></table>
+      <button class="btn-primary" id="againBtn" style="margin-top:18px;">🔄 เล่นอีกครั้ง</button>
+    `;
+  }
+
+  function renderLeaderboardTable(){
+    const table = document.getElementById('lbTable');
+    if(!table) return;
+    loadLeaderboard(list=>{
+      const tbody = table.querySelector('tbody');
+      if(list.length===0){
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);">ยังไม่มีคะแนน (หรือยังไม่ได้ตั้งค่า Firebase)</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map((e,i)=>{
+        const isMe = e.name===state.name && e.score===state.score && Math.abs(state.elapsedSec - e.time) < 1.5;
+        return `<tr class="${isMe?'me':''}"><td class="rank">${i+1}</td><td>${escapeHtml(e.name)}</td><td class="mono">${e.score}</td><td class="mono">${e.time.toFixed(1)}s</td></tr>`;
+      }).join('');
+    });
+  }
+
+  function renderQuitModal(){
+    return `
+      <div class="overlay" id="overlay">
+        <div class="modal">
+          <div class="icon-badge">🚪</div>
+          <p>ต้องการออกจากเกมตอนนี้หรือไม่?<br>คะแนนรอบนี้จะไม่ถูกบันทึก</p>
+          <div class="modal-row">
+            <button class="modal-cancel" id="cancelQuit">เล่นต่อ</button>
+            <button class="modal-confirm" id="confirmQuit">ออกจากเกม</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ---------- Handlers ----------
+  function attachHandlers(){
+    if(state.screen==="start"){
+      const nameInput = document.getElementById('nameInput');
+      nameInput.addEventListener('input', e=>{ state.name = e.target.value; });
+      document.getElementById('startBtn').addEventListener('click', ()=>{
+        const val = (document.getElementById('nameInput').value||'').trim();
+        state.name = val || 'ผู้เล่น';
+        state.rounds = pickWeightedRounds();
+        state.round = 0; state.score = 0; state.perRound = [];
+        state.startedAt = Date.now(); state.elapsedSec = 0;
+        goToRound(0);
+        startTicker();
+      });
+    } else if(state.screen==="round"){
+      document.getElementById('quitBtn').addEventListener('click', ()=>{ state.showQuitModal=true; render(); });
+      document.querySelectorAll('[data-kind="ba"]').forEach(btn=>{
+        btn.addEventListener('click', ()=> pickBeforeAfter(btn.getAttribute('data-field'), btn.getAttribute('data-val')));
+      });
+      document.querySelectorAll('[data-kind="tool"]').forEach(btn=>{
+        btn.addEventListener('click', ()=> pickTool(btn.getAttribute('data-val')));
+      });
+      const nextBtn = document.getElementById('nextBtn');
+      if(nextBtn) nextBtn.addEventListener('click', ()=>{
+        if(state.round < state.rounds.length-1) goToRound(state.round+1);
+        else finishGame();
+      });
+    } else if(state.screen==="end"){
+      document.getElementById('againBtn').addEventListener('click', ()=>{ state.screen="start"; render(); });
+    }
+
+    if(state.showQuitModal){
+      document.getElementById('cancelQuit').addEventListener('click', ()=>{ state.showQuitModal=false; render(); });
+      document.getElementById('confirmQuit').addEventListener('click', ()=>{
+        state.showQuitModal=false; stopTicker(); state.screen="start"; render();
+      });
+    }
+  }
+
+  function goToRound(idx){
+    state.round = idx;
+    const r = state.rounds[idx];
+    state.beforeOpts = shuffle([r.before, ...pickDistractors('before', idx, 2)]);
+    state.afterOpts = shuffle([r.after, ...pickDistractors('after', idx, 2)]);
+    state.toolOpts = shuffle(TOOL_NAMES);
+    state.selected = {before:null, after:null, tool:null};
+    state.correctness = {before:null, after:null, tool:null};
+    state.locked = false;
+    state.screen = "round";
+    render();
+  }
+
+  function pickBeforeAfter(field, val){
+    if(state.locked) return;
+    state.selected[field] = val; // re-pickable: overwrites previous choice
+    render();
+  }
+
+  function pickTool(val){
+    if(state.locked) return;
+    if(state.selected.before===null || state.selected.after===null) return; // gated
+    const r = state.rounds[state.round];
+    state.selected.tool = val;
+    state.locked = true;
+    state.correctness.before = state.selected.before === r.before;
+    state.correctness.after = state.selected.after === r.after;
+    state.correctness.tool = state.selected.tool === r.tool;
+    const pts = (state.correctness.before?POINTS.before:0)+(state.correctness.after?POINTS.after:0)+(state.correctness.tool?POINTS.tool:0);
+    state.score += pts;
+    state.perRound[state.round] = {before:state.correctness.before, after:state.correctness.after, tool:state.correctness.tool, points:pts};
+    render();
+  }
+
+  function finishGame(){
+    stopTicker();
+    state.finishedAt = Date.now();
+    state.elapsedSec = (state.finishedAt-state.startedAt)/1000;
+    state.screen = "end";
+    render();
+    saveScoreToLeaderboard(state.name, state.score, state.elapsedSec);
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
