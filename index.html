@@ -640,8 +640,8 @@
   function goToRound(idx){
     state.round = idx;
     const r = state.rounds[idx];
-    state.beforeOpts = shuffle([r.before, ...pickDistractors('before', idx, 2)]);
-    state.afterOpts = shuffle([r.after, ...pickDistractors('after', idx, 2)]);
+    state.beforeOpts = shuffle([r.before, ...pickDistractors('before', idx, 1)]);
+    state.afterOpts = shuffle([r.after, ...pickDistractors('after', idx, 1)]);
     state.toolOpts = shuffle(TOOL_NAMES);
     state.selected = {before:null, after:null, tool:null};
     state.correctness = {before:null, after:null, tool:null};
