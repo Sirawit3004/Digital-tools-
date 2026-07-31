@@ -145,10 +145,12 @@
     background:#FAFAFD;font-size:12px;font-weight:700;color:var(--text);
   }
   .toolopt .ticon{font-size:20px;}
+  .toolopt.picked{border-color:var(--purple);background:var(--purple-bg);color:var(--purple-dark);}
   .toolopt.correct{border-color:var(--success);background:#EAFBF2;color:#0F6B34;}
   .toolopt.wrong{border-color:var(--red);background:var(--red-bg);color:#A82740;}
   .toolopt.dim{opacity:0.4;}
   .toolopt.locked-disabled{opacity:0.35;background:#F3F2F8;}
+  .btn-primary:disabled{opacity:0.4;box-shadow:none;}
 
   .result-strip{
     display:flex;justify-content:space-around;align-items:center;background:#F8F7FD;border-radius:14px;
@@ -228,6 +230,21 @@
       arr.reverse(); // highest score first
       callback(arr);
     }, err=>{ console.warn("Could not load leaderboard:", err); callback([]); });
+  }
+
+  // ==== Google Sheets logging (optional) ====
+  // 1) Set up the Apps Script Web App (see chat instructions)
+  // 2) Paste the deployed Web App URL below
+  const SHEETS_WEBHOOK_URL = "YOUR_APPS_SCRIPT_URL";
+  function sendScoreToSheet(name, score, timeSec){
+    if(!SHEETS_WEBHOOK_URL || SHEETS_WEBHOOK_URL === "YOUR_APPS_SCRIPT_URL") return;
+    try{
+      fetch(SHEETS_WEBHOOK_URL, {
+        method: 'POST',
+        mode: 'no-cors', // Apps Script responses aren't readable cross-origin; fire-and-forget
+        body: JSON.stringify({ name, score, time: timeSec })
+      }).catch(e=>console.warn("Sheet log failed:", e));
+    }catch(e){ console.warn("Sheet log failed:", e); }
   }
 
   // 22-question pool: Power BI x6, PI Vision x6, Dataiku x10
@@ -435,8 +452,9 @@
         <div class="htitle">💡 วิธีเล่น</div>
         <ul>
           <li>อ่านเป้าหมายที่โจทย์กำหนด</li>
-          <li>เลือกอดีต (สถานการณ์เดิม) และอนาคต (สถานการณ์ใหม่) — เปลี่ยนใจใหม่ได้ก่อนตอบ</li>
-          <li>เมื่อพร้อมแล้ว เลือก Digital Tool เพื่อยืนยันคำตอบ</li>
+          <li>เลือกเครื่องมือ (Digital Tool) ที่คิดว่าใช่ก่อน</li>
+          <li>เลือกอดีต (สถานการณ์เดิม) และอนาคต (สถานการณ์ใหม่) — เปลี่ยนใจใหม่ได้ก่อนส่งคำตอบ</li>
+          <li>เมื่อเลือกครบทั้ง 3 ข้อแล้ว กด "ส่งคำตอบ" เพื่อยืนยัน</li>
           <li>เล่นครบ 5 การ์ด (สุ่มจากคลังคำถามทั้งหมด) รับคะแนนสูงสุด 100</li>
           <li>ออกจากเกมได้ทุกเมื่อที่ต้องการ</li>
         </ul>
@@ -458,7 +476,7 @@
 
   function renderRound(){
     const r = state.rounds[state.round];
-    const toolsUnlocked = state.selected.before!==null && state.selected.after!==null;
+    const allSelected = state.selected.tool!==null && state.selected.before!==null && state.selected.after!==null;
     const pts = state.locked ? (state.correctness.before?POINTS.before:0)+(state.correctness.after?POINTS.after:0)+(state.correctness.tool?POINTS.tool:0) : null;
 
     return `
@@ -473,6 +491,14 @@
       <div class="goal-card">
         <div class="goal-eyebrow">🎯 เป้าหมาย:</div>
         <p class="goal-text">${r.goal}</p>
+      </div>
+
+      <div class="tool-section">
+        <div class="col-header">🛠️ เลือก เครื่องมือ</div>
+        <div class="col-underline"></div>
+        <div class="toolchoices">
+          ${state.toolOpts.map(name=>toolBtn(name, r.tool)).join('')}
+        </div>
       </div>
 
       <div class="placeholders">
@@ -499,16 +525,9 @@
         </div>
       </div>
 
-      <div class="tool-section">
-        <div class="col-header">🛠️ เลือก เครื่องมือ (เพื่อยืนยันคำตอบ)</div>
-        <div class="col-underline"></div>
-        ${!toolsUnlocked && !state.locked ? '<div class="tool-hint">⚠️ เลือกอดีตและอนาคตให้ครบก่อน จึงจะเลือกเครื่องมือได้</div>' : ''}
-        <div class="toolchoices">
-          ${state.toolOpts.map(name=>toolBtn(name, r.tool, toolsUnlocked)).join('')}
-        </div>
-      </div>
-
-      ${state.locked ? `
+      ${!state.locked ? `
+        <button class="btn-primary" id="submitBtn" ${allSelected?'':'disabled'}>${allSelected ? '✅ ส่งคำตอบ' : 'เลือกให้ครบทั้ง 3 ข้อก่อน'}</button>
+      ` : `
         <div class="result-strip">
           <div>ก่อน <b>${state.correctness.before? '+'+POINTS.before:'0'}</b></div>
           <div>หลัง <b>${state.correctness.after? '+'+POINTS.after:'0'}</b></div>
@@ -516,7 +535,7 @@
           <div>รวม <b>${pts}/20</b></div>
         </div>
         <button class="btn-primary" id="nextBtn">${state.round < state.rounds.length-1 ? 'การ์ดถัดไป →' : 'ดูคะแนนสรุป 🏁'}</button>
-      ` : ''}
+      `}
     `;
   }
 
@@ -532,17 +551,17 @@
     const disabled = state.locked ? 'disabled' : '';
     return `<button class="${cls}" data-kind="ba" data-field="${field}" data-val="${escapeHtml(text)}" ${disabled}>${escapeHtml(text)}</button>`;
   }
-  function toolBtn(name, correctVal, toolsUnlocked){
+  function toolBtn(name, correctVal){
     const t = TOOLS.find(t=>t.name===name);
     let cls = 'toolopt';
     if(state.locked){
       if(name===correctVal) cls += ' correct';
       else if(name===state.selected.tool) cls += ' wrong';
       else cls += ' dim';
-    } else if(!toolsUnlocked){
-      cls += ' locked-disabled';
+    } else if(state.selected.tool===name){
+      cls += ' picked';
     }
-    const disabled = (state.locked || !toolsUnlocked) ? 'disabled' : '';
+    const disabled = state.locked ? 'disabled' : '';
     return `<button class="${cls}" data-kind="tool" data-val="${escapeHtml(name)}" ${disabled}><span class="ticon">${t.icon}</span>${name}</button>`;
   }
 
@@ -625,6 +644,8 @@
         if(state.round < state.rounds.length-1) goToRound(state.round+1);
         else finishGame();
       });
+      const submitBtn = document.getElementById('submitBtn');
+      if(submitBtn) submitBtn.addEventListener('click', submitAnswer);
     } else if(state.screen==="end"){
       document.getElementById('againBtn').addEventListener('click', ()=>{ state.screen="start"; render(); });
     }
@@ -658,9 +679,14 @@
 
   function pickTool(val){
     if(state.locked) return;
-    if(state.selected.before===null || state.selected.after===null) return; // gated
+    state.selected.tool = val; // re-pickable, does not lock
+    render();
+  }
+
+  function submitAnswer(){
+    if(state.locked) return;
+    if(state.selected.tool===null || state.selected.before===null || state.selected.after===null) return;
     const r = state.rounds[state.round];
-    state.selected.tool = val;
     state.locked = true;
     state.correctness.before = state.selected.before === r.before;
     state.correctness.after = state.selected.after === r.after;
@@ -678,6 +704,7 @@
     state.screen = "end";
     render();
     saveScoreToLeaderboard(state.name, state.score, state.elapsedSec);
+    sendScoreToSheet(state.name, state.score, state.elapsedSec);
   }
 
   render();
