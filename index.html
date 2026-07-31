@@ -151,6 +151,7 @@
   .toolopt.dim{opacity:0.4;}
   .toolopt.locked-disabled{opacity:0.35;background:#F3F2F8;}
   .btn-primary:disabled{opacity:0.4;box-shadow:none;}
+  a.btn-primary, a.btn-ghost{display:block;text-decoration:none;box-sizing:border-box;text-align:center;}
 
   .result-strip{
     display:flex;justify-content:space-around;align-items:center;background:#F8F7FD;border-radius:14px;
@@ -346,6 +347,7 @@
 
   const ROUNDS_PER_GAME = 5; // fixed mix: 1 Power BI + 1 PI Vision + 3 Dataiku (see pickWeightedRounds)
   const POINTS = {before:6, after:6, tool:8}; // 20 pts per card x 5 cards = 100 max
+  const SURVEY_URL = "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=l6GLZXNs6k-RvRx9jea_LM8jvr4ih_ZGp7W9yBuOlydURVFZQjVVUEpGSThTMzFZNFIwTUJEQ0FYNS4u";
 
   // ---------- State ----------
   let state = {
@@ -460,6 +462,7 @@
         </ul>
       </div>
       <button class="btn-primary" id="startBtn">🚀 เริ่มเล่นเลย!</button>
+      <a class="btn-ghost" href="${SURVEY_URL}" target="_blank" rel="noopener">📝 ทำแบบสำรวจ (Survey)</a>
     `;
   }
 
@@ -582,7 +585,8 @@
       <h3 style="margin:6px 0 10px;font-size:15px;color:var(--purple-dark);">🏆 อันดับคะแนน</h3>
       <table id="lbTable"><thead><tr><th>#</th><th>ชื่อ</th><th>คะแนน</th><th>เวลา</th></tr></thead>
       <tbody><tr><td colspan="4" style="color:var(--muted);">กำลังโหลด…</td></tr></tbody></table>
-      <button class="btn-primary" id="againBtn" style="margin-top:18px;">🔄 เล่นอีกครั้ง</button>
+      <a class="btn-primary" href="${SURVEY_URL}" target="_blank" rel="noopener" style="margin-top:18px;">📝 ทำแบบสำรวจ (Survey)</a>
+      <button class="btn-ghost" id="againBtn">🔄 เล่นอีกครั้ง</button>
     `;
   }
 
